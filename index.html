@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>WordSense | NLP Lab</title><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body>
+<header class="topbar"><div class="brand-mark">W</div><div><div class="brand">WordSense</div><div class="brand-sub">NLP · WordNet · Lesk baseline</div></div><span class="top-pill">PROJECT 05</span></header>
+<main class="wrap">
+<section class="hero"><p class="eyebrow">NATURAL LANGUAGE PROCESSING</p><h1>Find the meaning<br><span>behind the word.</span></h1><p class="intro">Explore lexical relations and analyze one target word or discover multiple potentially ambiguous words in a sentence.</p></section>
+<section class="panel input-panel">
+<div class="section-head"><div><span class="step">01</span><h2>Enter your sentence</h2></div><span class="muted">Required</span></div>
+<form method="post" id="analysis-form">
+<label for="sentence">Sentence or paragraph</label><textarea id="sentence" name="sentence" rows="5" required placeholder="Example: She deposited money in the bank.">{{ sentence }}</textarea>
+<div class="mode-row"><label class="mode-option"><input type="radio" name="mode" value="single" {% if mode != 'all' %}checked{% endif %}> Analyze one target word</label><label class="mode-option"><input type="radio" name="mode" value="all" {% if mode == 'all' %}checked{% endif %}> Discover multiple words</label></div>
+<div class="field-row" id="target-row"><div class="field-grow"><label for="target_word">Target word</label><input id="target_word" name="target_word" value="{{ target_word }}" placeholder="e.g. bank"></div><button type="submit" class="primary">Analyze <span>→</span></button></div>
+<div class="examples"><span>Try an example:</span><button type="button" class="example" data-sentence="She deposited money in the bank." data-word="bank">bank · money</button><button type="button" class="example" data-sentence="He sat on the bank of the river." data-word="bank">bank · river</button><button type="button" class="example" data-sentence="The crane lifted a steel beam near the river bank." data-word="crane">crane · machine</button></div>
+</form></section>
+{% if result %}
+{% if result.error %}<section class="alert">{{ result.error }}</section>
+{% elif result.mode == 'all' %}
+<section class="results"><div class="section-head"><div><span class="step">02</span><h2>Multi-word analysis</h2></div><span class="count">{{ result.ambiguous_count }} words explored</span></div>
+<div class="stats"><div class="stat-card"><span>Words in text</span><strong>{{ result.word_count }}</strong></div><div class="stat-card"><span>Unique words</span><strong>{{ result.unique_words }}</strong></div><div class="stat-card"><span>Words explored</span><strong>{{ result.ambiguous_count }}</strong></div></div>
+<p class="note">{{ result.note }}</p>
+{% for item in result.results %}
+<div class="multi-result"><div class="multi-head"><div><span class="target-tag">{{ item.target_word }}</span><h3>{{ item.target_word }} — {{ item.senses|length }} displayed senses</h3></div>{% if item.predicted %}<div class="prediction-mini"><span>Lesk prediction</span><strong>{{ item.predicted.name }}</strong><small>{{ item.predicted.definition }}</small></div>{% endif %}</div>
+<div class="sense-grid">{% for sense in item.senses[:4] %}<article class="sense-card"><div class="sense-top"><span class="sense-number">SENSE {{ loop.index }}</span><span class="pos">{{ sense.part_of_speech }}</span></div><h3>{{ sense.name }}</h3><p class="definition">{{ sense.definition }}</p>{% if sense.lemmas %}<div class="chips">{% for lemma in sense.lemmas[:5] %}<span>{{ lemma }}</span>{% endfor %}</div>{% endif %}</article>{% endfor %}</div></div>
+{% else %}<p>No candidate words found. Try a longer sentence or single-word mode.</p>{% endfor %}
+<form method="post" action="{{ url_for('download') }}" class="download-form"><input type="hidden" name="sentence" value="{{ result.sentence }}"><input type="hidden" name="mode" value="all"><button class="secondary" type="submit">↓ Export all results (CSV)</button></form></section>
+{% else %}
+<section class="results"><div class="section-head"><div><span class="step">02</span><h2>Analysis results</h2></div><span class="count">{{ result.senses|length }} candidate senses</span></div>
+<div class="context-card"><div class="small-label">CONTEXT</div><p>“{{ result.sentence }}”</p><span class="target-tag">Target: <strong>{{ result.target_word }}</strong></span></div>
+<div class="prediction"><div class="prediction-icon">✦</div><div class="prediction-body"><div class="small-label">LESK BASELINE PREDICTION</div>{% if result.predicted %}<h3>{{ result.predicted.name }}</h3><p>{{ result.predicted.definition }}</p><div class="chips">{% for lemma in result.predicted.lemmas %}<span>{{ lemma }}</span>{% endfor %}</div>{% else %}<h3>No prediction returned</h3><p>Review the candidate senses and try a sentence with more context.</p>{% endif %}</div></div>
+<p class="note">{{ result.note }}</p><div class="section-head candidate-head"><div><span class="step">03</span><h2>WordNet sense inventory</h2></div></div>
+<div class="sense-grid">{% for sense in result.senses %}<article class="sense-card"><div class="sense-top"><span class="sense-number">{{ "%02d"|format(loop.index) }}</span><span class="pos">{{ sense.part_of_speech }}</span></div><h3>{{ sense.name }}</h3><p class="definition">{{ sense.definition }}</p>{% if sense.lemmas %}<div class="sense-label">SYNONYMS / LEMMAS</div><div class="chips">{% for lemma in sense.lemmas %}<span>{{ lemma }}</span>{% endfor %}</div>{% endif %}{% if sense.examples %}<div class="sense-label">WORDNET EXAMPLES</div><ul>{% for example in sense.examples %}<li>{{ example }}</li>{% endfor %}</ul>{% endif %}{% if sense.hypernyms %}<div class="sense-label">BROADER CONCEPTS</div><div class="chips">{% for h in sense.hypernyms %}<span>{{ h }}</span>{% endfor %}</div>{% endif %}</article>{% else %}<p>No WordNet senses found for this word.</p>{% endfor %}</div>
+<form method="post" action="{{ url_for('download') }}" class="download-form"><input type="hidden" name="sentence" value="{{ result.sentence }}"><input type="hidden" name="target_word" value="{{ result.target_word }}"><input type="hidden" name="mode" value="single"><button class="secondary" type="submit">↓ Export sense inventory (CSV)</button></form></section>
+{% endif %}{% endif %}
+<footer><span>WordSense · Educational NLP project</span><span>Lesk is a baseline; predictions can be imperfect.</span></footer></main>
+<script>
+document.querySelectorAll('.example').forEach(b=>b.addEventListener('click',()=>{document.getElementById('sentence').value=b.dataset.sentence;document.getElementById('target_word').value=b.dataset.word;}));
+function updateMode(){const all=document.querySelector('input[name="mode"]:checked').value==='all';document.getElementById('target-row').classList.toggle('disabled-row',all);document.getElementById('target_word').required=!all;}
+document.querySelectorAll('input[name="mode"]').forEach(r=>r.addEventListener('change',updateMode));updateMode();
+</script></body></html>
